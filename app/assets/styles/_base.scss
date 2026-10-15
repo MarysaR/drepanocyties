@@ -1,0 +1,118 @@
+// Fondations : remise à zéro légère, typographie, liens et focus visible.
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-accent);
+}
+
+h1 { font-size: clamp(1.75rem, 4vw, 2.25rem); }
+h2 { font-size: 1.375rem; }
+h3 { font-size: 1.125rem; }
+
+a {
+  color: var(--color-accent);
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -4rem;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent);
+  color: var(--color-white);
+  border-radius: var(--radius-small);
+  z-index: 100;
+
+  &:focus {
+    top: var(--space-4);
+  }
+}
+
+.card {
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-large);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+
+  label,
+  legend {
+    font-weight: 600;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: var(--font-size-small);
+  }
+}
+
+fieldset.form-field {
+  border: 0;
+  padding: 0;
+  margin-inline: 0;
+}
+
+.choice-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

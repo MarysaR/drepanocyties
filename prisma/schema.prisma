@@ -1,0 +1,203 @@
+// Schéma de données du Jumeau Émotionnel.
+// Les contenus personnels (messages, souvenirs, journal, profil) sont chiffrés
+// par l'application avant stockage : les colonnes *_encrypted ne contiennent jamais de texte clair.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/shared/infrastructure/prisma/generated"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ReplyLength {
+  SHORT
+  BALANCED
+  DETAILED
+}
+
+enum MessageAuthor {
+  PERSON
+  TWIN
+}
+
+// TWIN_PROPOSAL : proposé par le jumeau puis accepté ; PERSON_MESSAGE : la personne a choisi
+// de retenir l'un de ses messages ; WRITTEN_BY_PERSON : rédigé directement par la personne.
+enum MemoryOrigin {
+  TWIN_PROPOSAL
+  PERSON_MESSAGE
+  WRITTEN_BY_PERSON
+}
+
+enum SuppressionReason {
+  REJECTED
+  CORRECTED
+  DELETED
+}
+
+enum Mood {
+  CALM
+  JOYFUL
+  GRATEFUL
+  TIRED
+  WORRIED
+  SAD
+  ANGRY
+  OVERWHELMED
+}
+
+enum ConsentType {
+  AI_PROCESSING
+  PERSISTENT_MEMORY
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  authProvider String   @map("auth_provider") @db.VarChar(32)
+  authSubject  String   @map("auth_subject") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  profile            Profile?
+  conversations      Conversation[]
+  messages           Message[]
+  memories           Memory[]
+  memoryProposals    MemoryProposal[]
+  memorySuppressions MemorySuppression[]
+  journalEntries     JournalEntry[]
+  consentDecisions   ConsentDecision[]
+
+  @@unique([authProvider, authSubject])
+  @@map("users")
+}
+
+model Profile {
+  userId                 String      @id @map("user_id") @db.Uuid
+  preferredNameEncrypted String?     @map("preferred_name_encrypted")
+  aboutMeEncrypted       String?     @map("about_me_encrypted")
+  replyLength            ReplyLength @default(BALANCED) @map("reply_length")
+  updatedAt              DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Conversation {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  titleEncrypted String?  @map("title_encrypted")
+  createdAt      DateTime @default(now()) @map("created_at")
+  lastActivityAt DateTime @default(now()) @map("last_activity_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId, lastActivityAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id               String        @id @default(uuid()) @db.Uuid
+  conversationId   String        @map("conversation_id") @db.Uuid
+  userId           String        @map("user_id") @db.Uuid
+  author           MessageAuthor
+  contentEncrypted String        @map("content_encrypted")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  conversation    Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memories        Memory[]
+  memoryProposals MemoryProposal[]
+
+  @@index([conversationId, createdAt])
+  @@index([userId])
+  @@map("messages")
+}
+
+model Memory {
+  id                 String       @id @default(uuid()) @db.Uuid
+  userId             String       @map("user_id") @db.Uuid
+  contentEncrypted   String       @map("content_encrypted")
+  contentFingerprint String       @map("content_fingerprint") @db.Char(64)
+  origin             MemoryOrigin
+  sourceMessageId    String?      @map("source_message_id") @db.Uuid
+  consentedAt        DateTime     @map("consented_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMessage Message? @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, contentFingerprint])
+  @@index([userId, createdAt])
+  @@map("memories")
+}
+
+// Proposition du jumeau en attente de décision : elle n'est jamais utilisée
+// comme souvenir tant que la personne ne l'a pas acceptée.
+model MemoryProposal {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  contentEncrypted   String   @map("content_encrypted")
+  contentFingerprint String   @map("content_fingerprint") @db.Char(64)
+  sourceMessageId    String?  @map("source_message_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMessage Message? @relation(fields: [sourceMessageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentFingerprint])
+  @@index([userId, createdAt])
+  @@map("memory_proposals")
+}
+
+// Empreintes (HMAC) de contenus que le jumeau ne doit plus jamais proposer.
+// Aucun texte n'y est conservé.
+model MemorySuppression {
+  id                 String            @id @default(uuid()) @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  contentFingerprint String            @map("content_fingerprint") @db.Char(64)
+  sourceMessageId    String?           @map("source_message_id") @db.Uuid
+  reason             SuppressionReason
+  createdAt          DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, contentFingerprint])
+  @@index([userId, sourceMessageId])
+  @@map("memory_suppressions")
+}
+
+model JournalEntry {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  titleEncrypted   String?  @map("title_encrypted")
+  contentEncrypted String   @map("content_encrypted")
+  mood             Mood?
+  entryDate        DateTime @map("entry_date") @db.Date
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, entryDate(sort: Desc)])
+  @@map("journal_entries")
+}
+
+// Journal append-only des décisions de consentement : la décision courante
+// est la plus récente pour un type donné.
+model ConsentDecision {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  type          ConsentType
+  granted       Boolean
+  policyVersion String      @map("policy_version") @db.VarChar(32)
+  decidedAt     DateTime    @default(now()) @map("decided_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, decidedAt(sort: Desc)])
+  @@map("consent_decisions")
+}

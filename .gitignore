@@ -1,0 +1,30 @@
+# Dépendances et builds
+node_modules
+.nuxt
+.output
+.data
+.nitro
+.cache
+dist
+
+# Client Prisma généré (recréé par `pnpm install` / `prisma generate`)
+src/shared/infrastructure/prisma/generated
+
+# Secrets et environnements locaux
+.env
+.env.*
+!.env.example
+
+# Tests et rapports
+coverage
+playwright-report
+test-results
+blob-report
+
+# Journaux et fichiers système
+logs
+*.log
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,43 @@
+// Tokens visuels centralisés : palette de référence (blanc, rose très pâle,
+// violet profond, noir), espacements, typographie et rayons.
+:root {
+  --color-white: #ffffff;
+  --color-blush: #fdf0f4;
+  --color-blush-strong: #f7dbe5;
+  --color-violet: #3b1263;
+  --color-violet-hover: #2c0c4b;
+  --color-violet-tint: #efe6f7;
+  --color-ink: #120818;
+  --color-danger: #8e1442;
+  --color-danger-tint: #fbe4ec;
+
+  --color-surface: var(--color-white);
+  --color-surface-soft: var(--color-blush);
+  --color-text: var(--color-ink);
+  --color-accent: var(--color-violet);
+  --color-line: #e7c7d4;
+  --color-focus: var(--color-violet);
+
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-size-small: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-large: 1.125rem;
+  --line-height: 1.6;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --radius-small: 0.5rem;
+  --radius-medium: 0.875rem;
+  --radius-large: 1.25rem;
+  --radius-pill: 999px;
+
+  --content-width: 72rem;
+  --reading-width: 46rem;
+}
