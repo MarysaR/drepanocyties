@@ -41,6 +41,7 @@ import { productIdentity } from '@shared/config/productIdentity'
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app-header {

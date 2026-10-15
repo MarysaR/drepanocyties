@@ -4,5 +4,5 @@
 import { withE2eDatabase } from './e2eDatabase'
 
 export default async function globalSetup(): Promise<void> {
-  await withE2eDatabase(client => client.query('TRUNCATE TABLE users CASCADE'))
+  await withE2eDatabase(client => client.query('TRUNCATE TABLE users, ai_usage_records CASCADE'))
 }

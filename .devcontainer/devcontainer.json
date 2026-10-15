@@ -1,0 +1,23 @@
+{
+  "name": "Drepa — hébergement de test privé",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/drepanocyties",
+  "shutdownAction": "stopCompose",
+  "initializeCommand": "bash scripts/hosting/init-hosting-env.sh",
+  "postCreateCommand": "bash scripts/hosting/post-create.sh",
+  "postStartCommand": "bash scripts/hosting/start-app.sh",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "Drepa", "onAutoForward": "silent", "protocol": "http" }
+  },
+  "secrets": {
+    "NUXT_ANTHROPIC_API_KEY": { "description": "Clé API Anthropic (console.anthropic.com). Utilisée uniquement côté serveur." },
+    "NUXT_OAUTH_AUTH0_DOMAIN": { "description": "Domaine du tenant Auth0, par exemple monlocataire.eu.auth0.com" },
+    "NUXT_OAUTH_AUTH0_CLIENT_ID": { "description": "Client ID de l'application Auth0 (Regular Web Application)" },
+    "NUXT_OAUTH_AUTH0_CLIENT_SECRET": { "description": "Client Secret de l'application Auth0" }
+  },
+  "customizations": {
+    "vscode": { "extensions": ["Vue.volar", "dbaeumer.vscode-eslint", "Prisma.prisma"] }
+  }
+}

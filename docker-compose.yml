@@ -2,7 +2,7 @@
 # Trois bases distinctes : `twin` (développement, vierge), `twin_test` (intégration), `twin_e2e` (Playwright).
 services:
   postgres:
-    image: postgres:16.10-alpine
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: twin

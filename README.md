@@ -1,12 +1,12 @@
-# Jumeau Émotionnel — MVP (premier jet)
+# Drepa — MVP
 
-> Nom provisoire, centralisé dans `src/shared/config/productIdentity.ts`.
+> Nom de travail, centralisé dans `src/shared/config/productIdentity.ts`.
 
 Compagnon conversationnel d'écoute pour les personnes concernées par la drépanocytose :
 conversations persistantes avec un jumeau, mémoire **strictement consentie**, journal émotionnel
 privé, tableau de bord et gestion de la confidentialité.
 
-⚠️ **Prototype privé, non déployé.** Aucune conformité RGPD ou HDS n'est revendiquée : un audit
+⚠️ **Prototype privé, non déployé publiquement.** Aucune conformité RGPD ou HDS n'est revendiquée : un audit
 des obligations applicables reste à mener avant tout usage réel.
 
 ## Documents de référence
@@ -51,7 +51,7 @@ s'il reste le moindre compte.
 | Langage | TypeScript 5.9 strict |
 | Authentification | Auth0 (OAuth Authorization Code) via `nuxt-auth-utils`, session chiffrée en cookie |
 | Base de données | PostgreSQL 16 + Prisma 7 (adaptateur `pg`, migrations versionnées) |
-| IA | Port `ConversationModel`, adaptateur Anthropic (`@anthropic-ai/sdk`) |
+| IA | Port `ConversationModel`, adaptateur Anthropic (`@anthropic-ai/sdk`), modèle `claude-sonnet-5-5` |
 | Validation | Zod 4 |
 | Tests | Vitest 4 (unitaires, intégration PostgreSQL réelle), Playwright (E2E) |
 | Paquets | pnpm 10 (npm 10.9 échoue sur un bug interne d'arborist avec cet arbre de dépendances) |
@@ -116,9 +116,15 @@ Convention Vue : `<template>` puis `<script setup lang="ts">` puis `<style scope
 - validation Zod de toutes les entrées et des identifiants ;
 - chiffrement AES-256-GCM des contenus personnels au repos (clé dérivée par HKDF) ;
 - secrets uniquement côté serveur ; en-têtes de sécurité (CSP, `X-Frame-Options`, etc.) ;
-- limitation des appels à l'IA par personne (minute / jour, en mémoire : une seule instance) ;
+- limitation des appels à l'IA par personne (minute / jour, en mémoire : une seule instance) et plafond cumulé de consommation ;
+- nombre de comptes plafonnable (`NUXT_REGISTRATION_LIMIT`) ;
 - journaux techniques sans contenu personnel ; Prisma sans journalisation des requêtes ;
 - export et effacement complet des données contrôlées par l'application.
+
+## Utiliser Drepa sur Android
+
+Voir [`docs/hebergement-android.md`](docs/hebergement-android.md) : hébergement de test privé sur GitHub Codespaces
+(HTTPS, Auth0, PostgreSQL, PWA installable, suivi de consommation, sauvegardes).
 
 ## Démarrage local
 
@@ -154,8 +160,12 @@ Seul l'identifiant `sub` est utilisé (scope `openid`) : aucun e-mail n'est dema
 
 ### IA
 
-Modèle par défaut : `claude-opus-5-5` (modifiable via `NUXT_ANTHROPIC_MODEL`), réflexion adaptative,
-effort `low`, repli serveur en cas de refus. Pour un autre fournisseur, implémenter
+Modèle par défaut : `claude-sonnet-5-5` (modifiable via `NUXT_ANTHROPIC_MODEL`), réflexion adaptative,
+effort `low`, **aucun repli automatique** vers un autre modèle ni vers une IA simulée : les échecs sont expliqués
+(clé refusée, modèle introuvable, crédits insuffisants, surcharge…). La consommation réelle (tokens) de chaque appel est
+enregistrée sans contenu ni identité ; un plafond cumulé estimé (`NUXT_AI_BUDGET_USD`) bloque les appels une fois atteint
+(estimation applicative, pas une garantie de facturation). `pnpm check:ai` vérifie sans coût que la clé et le modèle sont acceptés.
+Pour un autre fournisseur, implémenter
 `ConversationModel` (`src/domains/conversation/application/ports/ConversationModel.ts`) et le
 sélectionner dans `src/composition/createServerContainer.ts` ; aucun cas d'utilisation n'est à modifier.
 
@@ -172,14 +182,14 @@ pnpm test:e2e                   # build + Playwright sur la base twin_e2e
 Les E2E lancent l'application compilée en **mode test** (`NUXT_PUBLIC_TEST_MODE=true`) : connexion
 par identifiant de test (`/connexion/test`) et modèle conversationnel simulé, signalés par un bandeau.
 Ce mode est refusé hors `localhost` et hors d'une base dont le nom contient `test` ou `e2e`.
-**Il ne prouve pas** le fonctionnement réel d'Auth0 ni d'Anthropic, qui reste à vérifier avec vos identifiants.
+**Il ne prouve pas** le fonctionnement réel d'Auth0 ni d'Anthropic : voir `docs/hebergement-android.md` pour les vérifier avec vos identifiants.
 
 Si le Chromium de Playwright n'est pas installé : `pnpm exec playwright install chromium`, ou
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/chemin/vers/chrome pnpm test:e2e`.
 
 ## Limites connues du premier jet
 
-- Auth0 et Anthropic n'ont pas été testés avec de vrais identifiants (aucun secret disponible).
+- Auth0 et Anthropic n'ont pas encore été testés avec de vrais identifiants. Les tests vérifient la forme des requêtes et la gestion des erreurs avec un transport simulé, ce qui ne prouve pas l'intégration réelle.
 - Limiteur d'appels en mémoire du processus : à remplacer par un stockage partagé si plusieurs instances.
 - Pas de rotation de la clé de chiffrement ni de sauvegarde ; l'effacement ne couvre pas les éventuelles
   sauvegardes de base ni les données déjà transmises au fournisseur d'IA.

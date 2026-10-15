@@ -85,4 +85,14 @@ describe('Mémoire persistée (PostgreSQL)', () => {
     expect(history.messages.map(m => `${m.author}:${m.content}`)).toEqual(['PERSON:Un', 'TWIN:Réponse scriptée.', 'PERSON:Deux', 'TWIN:Réponse scriptée.'])
     expect(history.conversation.title).toBe('Un')
   })
+
+  it('enregistre la consommation de chaque appel sans aucun contenu ni identité', async () => {
+    await container.conversation.sendMessage.execute(mary, { conversationId, content: 'Un secret très personnel' })
+    const summary = await container.conversation.usage.execute()
+    expect(summary).toMatchObject({ requestCount: 1, outputTokens: 50 })
+    expect(summary.spentUsd).toBeGreaterThan(0)
+    const rows = JSON.stringify(await database.aiUsageRecord.findMany())
+    expect(rows).not.toContain('secret')
+    expect(rows).not.toContain(mary)
+  })
 })

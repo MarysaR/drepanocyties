@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ConversationModel, TwinReplyRequest } from '@domains/conversation/application/ports/ConversationModel'
 import { SendMessageUseCase } from '@domains/conversation/application/use-cases/SendMessageUseCase'
+import type { AiUsageRecordDraft } from '@domains/conversation/application/ports/AiUsageLedger'
+import { SONNET_5_5_PRICES } from '@domains/conversation/domain/services/AiCostEstimator'
+import { AiBudgetExhaustedError } from '@domains/conversation/domain/errors'
 import { ConsentRequiredError, NotFoundError, RateLimitedError, TechnicalError, ValidationError } from '@shared/errors/AppError'
 import type { UserId } from '@shared/domain/UserId'
 import { InMemoryConversationRepository } from '../../support/InMemoryConversationRepository'
@@ -13,10 +16,13 @@ function createHarness() {
   const memories = new Map<UserId, string[]>([[mary, ['Mary aime le jazz.']]])
   const requests: TwinReplyRequest[] = []
   let limited = false
+  const recorded: AiUsageRecordDraft[] = []
+  let spentMicroUsd = 0
+  const budgetMicroUsd = 1_000_000
   const model: ConversationModel = {
     generateReply: vi.fn(async (request: TwinReplyRequest) => {
       requests.push(request)
-      return { content: 'Je vous écoute.', memorySuggestions: ['Mary joue du violoncelle.'] }
+      return { content: 'Je vous écoute.', memorySuggestions: ['Mary joue du violoncelle.'], model: 'test-model', usage: { inputTokens: 1000, outputTokens: 500, cacheReadTokens: 0, cacheWriteTokens: 0 } }
     }),
   }
   const recordSuggestions = vi.fn(async (_userId: UserId, input: { sourceMessageId: string; suggestions: readonly string[] }) =>
@@ -32,11 +38,18 @@ function createHarness() {
     },
     memory: { authorizedMemories: async userId => memories.get(userId) ?? [], recordSuggestions },
     profile: { twinProfile: async () => ({ preferredName: 'Mary', aboutMe: null, replyLength: 'BALANCED' }) },
+    usageLedger: {
+      record: async (draft) => { recorded.push(draft) },
+      totals: async () => ({ requestCount: recorded.length, costMicroUsd: spentMicroUsd, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }),
+    },
+    budget: { limitMicroUsd: budgetMicroUsd, prices: SONNET_5_5_PRICES },
   })
 
   return {
     repository, model, requests, recordSuggestions, useCase, aiAllowed, memoryAllowed, memories,
     limit: () => { limited = true },
+    recorded,
+    spend: (microUsd: number) => { spentMicroUsd = microUsd },
   }
 }
 
@@ -122,5 +135,32 @@ describe('Envoi d’un message au jumeau', () => {
     expect(harness.requests[1]?.history.map(m => `${m.author}:${m.content}`)).toEqual([
       'PERSON:Premier', 'TWIN:Je vous écoute.', 'PERSON:Second',
     ])
+  })
+
+  it('enregistre la consommation réelle de chaque appel avec son coût estimé', async () => {
+    await harness.useCase.execute(mary, { conversationId, content: 'Bonjour' })
+    expect(harness.recorded).toEqual([{
+      model: 'test-model',
+      usage: { inputTokens: 1000, outputTokens: 500, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      costMicroUsd: 7000,
+    }])
+  })
+
+  it('refuse tout appel au modèle une fois le plafond de consommation atteint', async () => {
+    harness.spend(1_000_000)
+    await expect(harness.useCase.execute(mary, { conversationId, content: 'Bonjour' })).rejects.toBeInstanceOf(AiBudgetExhaustedError)
+    expect(harness.model.generateReply).not.toHaveBeenCalled()
+    expect(harness.repository.messages).toHaveLength(0)
+  })
+
+  it('limite la taille de l’historique transmis au modèle', async () => {
+    for (let index = 0; index < 20; index++) {
+      await harness.repository.saveExchange(mary, conversationId, { personContent: `Question ${index} ${'x'.repeat(900)}`, twinContent: `Réponse ${index} ${'y'.repeat(900)}`, title: null })
+    }
+    await harness.useCase.execute(mary, { conversationId, content: 'Dernier message' })
+    const transmitted = harness.requests.at(-1)!.history
+    expect(transmitted.at(-1)?.content).toBe('Dernier message')
+    expect(transmitted.reduce((total, message) => total + message.content.length, 0)).toBeLessThanOrEqual(16_000 + 'Dernier message'.length)
+    expect(transmitted.length).toBeLessThan(41)
   })
 })

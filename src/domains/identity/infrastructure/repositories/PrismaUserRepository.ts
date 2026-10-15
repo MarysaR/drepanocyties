@@ -29,4 +29,8 @@ export class PrismaUserRepository implements UserRepository {
     if (!uuidPattern.test(userId)) return false
     return (await this.db.user.count({ where: { id: userId } })) === 1
   }
+
+  count(): Promise<number> {
+    return this.db.user.count()
+  }
 }

@@ -3,6 +3,7 @@
  * (Anthropic aujourd'hui, un autre fournisseur demain).
  */
 import type { MessageAuthor } from '../../domain/entities/ConversationMessage'
+import type { TokenUsage } from '../../domain/value-objects/TokenUsage'
 
 export interface TwinReplyRequest {
   readonly instructions: string
@@ -14,6 +15,9 @@ export interface TwinReply {
   readonly content: string
   /** Suggestions de souvenirs : jamais enregistrées sans décision de la personne. */
   readonly memorySuggestions: readonly string[]
+  /** Modèle réellement utilisé et tokens consommés (tous appels confondus). */
+  readonly model: string
+  readonly usage: TokenUsage
 }
 
 export interface ConversationModel {

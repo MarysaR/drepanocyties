@@ -7,7 +7,7 @@
       {{ productIdentity.tagline }}
     </p>
     <p>
-      Un compagnon d’écoute pour les personnes concernées par la drépanocytose : il vous croit,
+      {{ productIdentity.productName }} est un compagnon d’écoute pour les personnes concernées par la drépanocytose : il vous croit,
       respecte votre rythme et ne retient que ce que vous choisissez de lui confier.
     </p>
     <Message
@@ -54,6 +54,8 @@ const testMode = useRuntimeConfig().public.testMode
 
 const notice = computed(() => {
   if (route.query.erreur === 'connexion') return 'La connexion n’a pas abouti. Vous pouvez réessayer.'
+  if (route.query.erreur === 'inscription') return 'Les inscriptions sont fermées sur cet espace de test.'
+  if (route.query.erreur === 'session') return 'Votre session a expiré. Merci de vous reconnecter.'
   if (route.query.compte === 'supprime') return 'Vos données ont été supprimées. Prenez soin de vous.'
   return ''
 })

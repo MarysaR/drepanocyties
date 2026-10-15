@@ -201,3 +201,18 @@ model ConsentDecision {
   @@index([userId, type, decidedAt(sort: Desc)])
   @@map("consent_decisions")
 }
+
+// Registre de consommation de l'IA : compteurs uniquement, aucun contenu ni identité de personne.
+model AiUsageRecord {
+  id               String   @id @default(uuid()) @db.Uuid
+  model            String   @db.VarChar(64)
+  inputTokens      Int      @map("input_tokens")
+  outputTokens     Int      @map("output_tokens")
+  cacheReadTokens  Int      @map("cache_read_tokens")
+  cacheWriteTokens Int      @map("cache_write_tokens")
+  costMicroUsd     Int      @map("cost_micro_usd")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("ai_usage_records")
+}

@@ -1,9 +1,9 @@
 /**
- * Libellés provisoires du produit, centralisés pour être remplacés
+ * Libellés provisoires du produit (nom de travail « Drepa »), centralisés pour être remplacés
  * facilement lorsque le nom définitif sera choisi.
  */
 export const productIdentity = {
-  productName: 'Jumeau Émotionnel',
+  productName: 'Drepa',
   twinName: 'votre jumeau',
   twinNameCapitalized: 'Votre jumeau',
   tagline: 'Un espace pour déposer ce que vous vivez, à votre rythme.',

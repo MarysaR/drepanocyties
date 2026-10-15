@@ -4,6 +4,7 @@
  */
 import { randomBytes } from 'node:crypto'
 import { createServerContainer } from '@composition/createServerContainer'
+import { SONNET_5_5_PRICES } from '@domains/conversation/domain/services/AiCostEstimator'
 import type { ConversationModel, TwinReplyRequest } from '@domains/conversation/application/ports/ConversationModel'
 import { createPrismaClient } from '@shared/infrastructure/prisma/createPrismaClient'
 
@@ -15,7 +16,7 @@ export class ScriptedConversationModel implements ConversationModel {
     this.requests.push(request)
     const memorySuggestions = this.nextSuggestions
     this.nextSuggestions = []
-    return { content: 'Réponse scriptée.', memorySuggestions }
+    return { content: 'Réponse scriptée.', memorySuggestions, model: 'scripted-model', usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0 } }
   }
 }
 
@@ -29,6 +30,8 @@ export function createTestContainer() {
     appBaseUrl: 'http://localhost:3000',
     anthropic: undefined,
     rateLimits: { perMinute: 100, perDay: 1000 },
+    aiBudget: { limitMicroUsd: 5_000_000, prices: SONNET_5_5_PRICES },
+    registrationLimit: undefined,
     auth0: undefined,
     testMode: false,
   }, { database, conversationModel: model })
@@ -36,5 +39,5 @@ export function createTestContainer() {
 }
 
 export async function resetDatabase(database: ReturnType<typeof createPrismaClient>): Promise<void> {
-  await database.$executeRawUnsafe('TRUNCATE TABLE users CASCADE')
+  await database.$executeRawUnsafe('TRUNCATE TABLE users, ai_usage_records CASCADE')
 }

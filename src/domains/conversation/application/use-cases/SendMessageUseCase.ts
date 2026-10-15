@@ -5,16 +5,24 @@
 import type { UserId } from '@shared/domain/UserId'
 import { ConsentRequiredError, NotFoundError, RateLimitedError } from '@shared/errors/AppError'
 import { catchError } from '@shared/errors/catchError'
+import { AiBudgetExhaustedError } from '../../domain/errors'
+import { estimateCostMicroUsd, type TokenPrices } from '../../domain/services/AiCostEstimator'
 import { deriveConversationTitle } from '../../domain/services/ConversationTitle'
+import { HISTORY_MAX_MESSAGES, selectMemoriesForPrompt, selectRecentHistory } from '../../domain/services/PromptBudget'
 import { composeTwinInstructions } from '../../domain/services/TwinInstructionsComposer'
 import { createMessageContent } from '../../domain/value-objects/MessageContent'
 import { toMessageDto, type SendMessageResultDto } from '../dto/ConversationDto'
 import type { ConversationConsentReader, SuggestedMemory, TwinMemoryGateway, TwinProfileReader } from '../ports/ConversationCollaborators'
+import type { AiUsageLedger } from '../ports/AiUsageLedger'
 import type { ConversationModel } from '../ports/ConversationModel'
 import type { ConversationRateLimiter } from '../ports/ConversationRateLimiter'
 import type { ConversationRepository } from '../ports/ConversationRepository'
 
-export const HISTORY_WINDOW = 40
+export interface AiBudgetSettings {
+  /** Plafond cumulé estimé, en micro-dollars. Garde-fou applicatif, pas un plafond de facturation. */
+  readonly limitMicroUsd: number
+  readonly prices: TokenPrices
+}
 
 export interface SendMessageDependencies {
   readonly conversations: ConversationRepository
@@ -23,6 +31,8 @@ export interface SendMessageDependencies {
   readonly consent: ConversationConsentReader
   readonly memory: TwinMemoryGateway
   readonly profile: TwinProfileReader
+  readonly usageLedger: AiUsageLedger
+  readonly budget: AiBudgetSettings
 }
 
 export class SendMessageUseCase {
@@ -38,18 +48,25 @@ export class SendMessageUseCase {
 
     const decision = rateLimiter.consume(userId)
     if (!decision.allowed) throw new RateLimitedError(decision.retryAfterSeconds)
+    if ((await this.deps.usageLedger.totals()).costMicroUsd >= this.deps.budget.limitMicroUsd) throw new AiBudgetExhaustedError()
 
     const canSuggestMemories = await consent.isMemoryAllowed(userId)
     const [memories, profile, recent] = await Promise.all([
       this.deps.memory.authorizedMemories(userId),
       this.deps.profile.twinProfile(userId),
-      conversations.recentMessages(userId, conversation.id, HISTORY_WINDOW - 1),
+      conversations.recentMessages(userId, conversation.id, HISTORY_MAX_MESSAGES),
     ])
 
     const reply = await model.generateReply({
-      instructions: composeTwinInstructions({ profile, memories, canSuggestMemories }),
-      history: [...recent.map(({ author, content }) => ({ author, content })), { author: 'PERSON', content }],
+      instructions: composeTwinInstructions({ profile, memories: selectMemoriesForPrompt(memories), canSuggestMemories }),
+      history: selectRecentHistory([...recent.map(({ author, content }) => ({ author, content })), { author: 'PERSON' as const, content }]),
       canSuggestMemories,
+    })
+
+    await this.deps.usageLedger.record({
+      model: reply.model,
+      usage: reply.usage,
+      costMicroUsd: estimateCostMicroUsd(reply.usage, this.deps.budget.prices),
     })
 
     const { personMessage, twinMessage } = await conversations.saveExchange(userId, conversation.id, {

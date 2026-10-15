@@ -44,7 +44,7 @@ describe('Installation neuve', () => {
     })
 
     expect(Object.keys(counts).sort()).toEqual([
-      'consent_decisions', 'conversations', 'journal_entries', 'memories', 'memory_proposals',
+      'ai_usage_records', 'consent_decisions', 'conversations', 'journal_entries', 'memories', 'memory_proposals',
       'memory_suppressions', 'messages', 'profiles', 'users',
     ])
     expect(Object.values(counts).every(count => count === 0)).toBe(true)

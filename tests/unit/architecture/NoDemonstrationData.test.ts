@@ -3,7 +3,7 @@
  * et les personas de test n'apparaissent jamais dans le code applicatif.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const root = join(import.meta.dirname, '../../..')
@@ -39,8 +39,13 @@ describe('Aucune donnée de démonstration', () => {
     expect(offenders).toEqual([])
   })
 
-  it("n'utilise ni localStorage, ni sessionStorage, ni IndexedDB, ni service worker", () => {
-    const offenders = applicationFiles.filter(path => /localStorage|sessionStorage|indexedDB|serviceWorker/.test(readFileSync(path, 'utf8')))
+  it("n'utilise ni localStorage, ni sessionStorage, ni IndexedDB, ni Cache Storage", () => {
+    const offenders = applicationFiles.filter(path => /localStorage|sessionStorage|indexedDB|caches\.|CacheStorage/.test(readFileSync(path, 'utf8')))
     expect(offenders).toEqual([])
+  })
+
+  it("ne déclare qu'un seul service worker, enregistré par le plugin PWA", () => {
+    const offenders = applicationFiles.filter(path => /serviceWorker/.test(readFileSync(path, 'utf8')))
+    expect(offenders.map(path => relative(root, path).split(sep).join('/'))).toEqual(['app/plugins/pwa.client.ts'])
   })
 })

@@ -15,7 +15,9 @@ import { StartConversationUseCase } from '@domains/conversation/application/use-
 import { AnthropicConversationModel } from '@domains/conversation/infrastructure/providers/AnthropicConversationModel'
 import { InMemoryConversationRateLimiter } from '@domains/conversation/infrastructure/providers/InMemoryConversationRateLimiter'
 import { SimulatedConversationModel } from '@domains/conversation/infrastructure/providers/SimulatedConversationModel'
+import { PrismaAiUsageLedger } from '@domains/conversation/infrastructure/repositories/PrismaAiUsageLedger'
 import { PrismaConversationRepository } from '@domains/conversation/infrastructure/repositories/PrismaConversationRepository'
+import { GetAiUsageSummaryUseCase } from '@domains/conversation/application/use-cases/GetAiUsageSummaryUseCase'
 import { GetDashboardOverviewUseCase } from '@domains/dashboard/application/use-cases/GetDashboardOverviewUseCase'
 import { PrismaDashboardActivityReader } from '@domains/dashboard/infrastructure/repositories/PrismaDashboardActivityReader'
 import { RequireExistingUserUseCase } from '@domains/identity/application/use-cases/RequireExistingUserUseCase'
@@ -81,6 +83,7 @@ export function createServerContainer(settings: ServerSettings, overrides: Conta
   const consentRepository = new PrismaConsentRepository(database)
   const profiles = new PrismaProfileRepository(database, cipher)
   const conversations = new PrismaConversationRepository(database, cipher)
+  const usageLedger = new PrismaAiUsageLedger(database)
   const memoryStore = new PrismaMemoryStore(database, cipher)
   const journal = new PrismaJournalRepository(database, cipher)
   const personalData = new PrismaPersonalDataStore(database, cipher)
@@ -106,7 +109,7 @@ export function createServerContainer(settings: ServerSettings, overrides: Conta
     settings,
     database,
     identity: {
-      signIn: new SignInWithExternalIdentityUseCase(users),
+      signIn: new SignInWithExternalIdentityUseCase(users, settings.registrationLimit),
       requireExistingUser: new RequireExistingUserUseCase(users),
     },
     consent: {
@@ -130,7 +133,10 @@ export function createServerContainer(settings: ServerSettings, overrides: Conta
         consent: consentReader,
         memory: twinMemoryGatewayFor(memory.authorized, memory.recordTwinSuggestions),
         profile: twinProfileReaderFor(getProfile),
+        usageLedger,
+        budget: settings.aiBudget,
       }),
+      usage: new GetAiUsageSummaryUseCase(usageLedger, settings.aiBudget.limitMicroUsd),
     },
     memory,
     journal: {

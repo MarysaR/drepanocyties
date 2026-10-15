@@ -28,3 +28,8 @@ logs
 .idea
 .vscode/*
 !.vscode/extensions.json
+
+# Hébergement de test : secrets générés, journaux et sauvegardes locales
+.devcontainer/.env
+.logs
+backups

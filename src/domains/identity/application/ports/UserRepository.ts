@@ -8,4 +8,5 @@ export interface UserRepository {
   findByExternalIdentity(provider: AuthProvider, subject: string): Promise<User | undefined>
   create(provider: AuthProvider, subject: string): Promise<User>
   exists(userId: UserId): Promise<boolean>
+  count(): Promise<number>
 }

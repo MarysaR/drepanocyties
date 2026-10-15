@@ -61,6 +61,7 @@ function submit(): void {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding-bottom: env(safe-area-inset-bottom);
 
   &__footer {
     display: flex;

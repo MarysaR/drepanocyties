@@ -37,4 +37,24 @@ describe('Configuration serveur', () => {
   it("n'active aucun modèle d'IA sans clé (pas de réponse simulée hors mode test)", () => {
     expect(readServerSettings(baseEnvironment).anthropic).toBeUndefined()
   })
+
+  it('utilise Claude Sonnet 5.5 par défaut et ne bascule sur aucun autre modèle', () => {
+    const settings = readServerSettings({ ...baseEnvironment, NUXT_ANTHROPIC_API_KEY: 'cle-de-test' })
+    expect(settings.anthropic?.model).toBe('claude-sonnet-5-5')
+  })
+
+  it('borne la sortie du modèle et fixe un plafond de consommation par défaut', () => {
+    const settings = readServerSettings(baseEnvironment)
+    expect(settings.aiBudget.limitMicroUsd).toBe(12_000_000)
+    expect(settings.aiBudget.prices).toMatchObject({ inputPerMillion: 2, outputPerMillion: 10 })
+    expect(settings.rateLimits.perDay).toBe(100)
+    expect(() => readServerSettings({ ...baseEnvironment, NUXT_ANTHROPIC_MAX_OUTPUT_TOKENS: '100000' })).toThrow(TechnicalError)
+  })
+
+  it('lit la limite d’inscriptions (illimitée si absente)', () => {
+    expect(readServerSettings(baseEnvironment).registrationLimit).toBeUndefined()
+    expect(readServerSettings({ ...baseEnvironment, NUXT_REGISTRATION_LIMIT: '1' }).registrationLimit).toBe(1)
+    expect(readServerSettings({ ...baseEnvironment, NUXT_REGISTRATION_LIMIT: '' }).registrationLimit).toBeUndefined()
+    expect(() => readServerSettings({ ...baseEnvironment, NUXT_REGISTRATION_LIMIT: '-2' })).toThrow(TechnicalError)
+  })
 })

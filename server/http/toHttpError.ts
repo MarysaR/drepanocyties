@@ -19,8 +19,15 @@ const statusByKind: Record<AppErrorKind, number> = {
   technical: 500,
 }
 
+/** Les défaillances du fournisseur d'IA sont signalées en 503, le plafond de consommation en 429. */
+function httpStatusFor(error: AppError): number {
+  if (error.code === 'AI_BUDGET_EXHAUSTED') return 429
+  if (error.kind === 'technical' && error.code.startsWith('AI_')) return 503
+  return statusByKind[error.kind]
+}
+
 export function toHttpError(event: H3Event, error: AppError) {
-  const statusCode = error.code === 'AI_PROVIDER_UNAVAILABLE' || error.code === 'AI_NOT_CONFIGURED' ? 503 : statusByKind[error.kind]
+  const statusCode = httpStatusFor(error)
   if (error.kind === 'technical') {
     serverLogger.failure('api_request_failed', error, { method: event.method, path: getRequestURL(event).pathname })
   }

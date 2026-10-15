@@ -3,7 +3,9 @@
  * être une IA et n'est jamais utilisé hors de ce mode.
  */
 import type { ConversationModel, TwinReply, TwinReplyRequest } from '../../application/ports/ConversationModel'
+import { NO_TOKEN_USAGE } from '../../domain/value-objects/TokenUsage'
 
+const SIMULATED_MODEL = 'simulated-test-model'
 const MEMORY_MARKER = /je veux que tu retiennes que (.+)/i
 
 export class SimulatedConversationModel implements ConversationModel {
@@ -17,6 +19,8 @@ export class SimulatedConversationModel implements ConversationModel {
           ? `[Réponse simulée] Voici ce que vous m'avez autorisé à retenir : ${memories.join(' | ')}`
           : '[Réponse simulée] Je n’ai aucun souvenir autorisé pour le moment.',
         memorySuggestions: [],
+        model: SIMULATED_MODEL,
+        usage: NO_TOKEN_USAGE,
       }
     }
 
@@ -25,6 +29,8 @@ export class SimulatedConversationModel implements ConversationModel {
     return {
       content: '[Réponse simulée] Merci de me confier cela. Je suis là pour vous écouter.',
       memorySuggestions: request.canSuggestMemories && suggestion ? [capitalize(suggestion)] : [],
+      model: SIMULATED_MODEL,
+      usage: NO_TOKEN_USAGE,
     }
   }
 }

@@ -35,14 +35,16 @@ test('Première utilisation : application vierge, puis premières données issue
   await page.goto('/journal')
   await expect(page.getByText('Votre journal est vide pour le moment.')).toBeVisible()
 
-  // Rien n'est stocké côté navigateur (ni localStorage, ni sessionStorage, ni IndexedDB, ni service worker).
+  // Rien n'est stocké côté navigateur : ni localStorage, sessionStorage, IndexedDB, ni Cache Storage.
+  // Le seul service worker autorisé est celui de la PWA, qui ne met rien en cache.
   const browserStorage = await page.evaluate(async () => ({
     localStorage: localStorage.length,
     sessionStorage: sessionStorage.length,
     indexedDb: (await indexedDB.databases()).length,
-    serviceWorkers: (await navigator.serviceWorker.getRegistrations()).length,
+    cacheStorage: (await caches.keys()).length,
+    otherServiceWorkers: (await navigator.serviceWorker.getRegistrations()).filter(registration => !registration.scope.endsWith('/')).length,
   }))
-  expect(browserStorage).toEqual({ localStorage: 0, sessionStorage: 0, indexedDb: 0, serviceWorkers: 0 })
+  expect(browserStorage).toEqual({ localStorage: 0, sessionStorage: 0, indexedDb: 0, cacheStorage: 0, otherServiceWorkers: 0 })
 
   // La première entrée du journal provient de la personne.
   const newEntry = page.getByRole('region', { name: 'Nouvelle entrée' })

@@ -1,0 +1,27 @@
+# Hébergement de test privé : l'application et sa base PostgreSQL.
+# Aucun port de la base n'est publié ni transféré : elle n'est joignable que depuis le conteneur applicatif.
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/drepanocyties:cached
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://drepa:${POSTGRES_PASSWORD}@db:5432/drepa
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: drepa
+      POSTGRES_DB: drepa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - drepa-db:/var/lib/postgresql/data
+
+volumes:
+  drepa-db:
